@@ -1,0 +1,711 @@
+[
+  {
+    "question": "Hur lång ska en officiell ishockeyrink vara enligt IIHF?",
+    "options": [
+      "50 meter",
+      "60 meter",
+      "70 meter"
+    ],
+    "answer": "60 meter",
+    "rule": "Regel 1.1 - Rinkens mått"
+  },
+  {
+    "question": "Hur bred ska rinken vara enligt IIHF-reglerna?",
+    "options": [
+      "20–24 meter",
+      "26–30 meter",
+      "32–36 meter"
+    ],
+    "answer": "26–30 meter",
+    "rule": "Regel 1.1 - Rinkens mått"
+  },
+  {
+    "question": "Vad kallas zonen där det egna målet står?",
+    "options": [
+      "Anfallszon",
+      "Neutral zon",
+      "Försvarszon"
+    ],
+    "answer": "Försvarszon",
+    "rule": "Regel 1.2 - Zoner"
+  },
+  {
+    "question": "Vilken färg har mittlinjen på isen?",
+    "options": [
+      "Röd",
+      "Blå",
+      "Vit"
+    ],
+    "answer": "Röd",
+    "rule": "Regel 1.3 - Linjer"
+  },
+  {
+    "question": "Hur många spelare får maximalt finnas i ett lags matchtrupp?",
+    "options": [
+      "18 utespelare + 2 målvakter",
+      "20 utespelare + 2 målvakter",
+      "22 utespelare + 2 målvakter"
+    ],
+    "answer": "20 utespelare + 2 målvakter",
+    "rule": "Regel 3.1 - Laguppställning"
+  },
+  {
+    "question": "Vad måste alla tröjor i ett lag ha?",
+    "options": [
+      "Namn och nummer",
+      "En stor logotyp",
+      "En annan färg än motståndaren"
+    ],
+    "answer": "Namn och nummer",
+    "rule": "Regel 3.2 - Spelardräkt"
+  },
+  {
+    "question": "Hur högt ska numret på ryggen vara?",
+    "options": [
+      "10–15 cm",
+      "20–25 cm",
+      "25–30 cm"
+    ],
+    "answer": "25–30 cm",
+    "rule": "Regel 3.2 - Spelardräkt"
+  },
+  {
+    "question": "Vilken bokstav bär assisterande lagkaptener?",
+    "options": [
+      "A",
+      "C",
+      "K"
+    ],
+    "answer": "A",
+    "rule": "Regel 3.3 - Lagkapten"
+  },
+  {
+    "question": "Hur många assisterande lagkaptener får ett lag ha?",
+    "options": [
+      "1",
+      "2",
+      "3"
+    ],
+    "answer": "2",
+    "rule": "Regel 3.3 - Lagkapten"
+  },
+  {
+    "question": "Vad ska en spelare göra om hjälmen lossnar under spel?",
+    "options": [
+      "Fortsätta spela",
+      "Byta direkt",
+      "Sätta på den igen"
+    ],
+    "answer": "Byta direkt",
+    "rule": "Regel 3.4 - Skyddsutrustning"
+  },
+  {
+    "question": "Vad kallas ett straff som är 2 minuter?",
+    "options": [
+      "Större straff",
+      "Mindre straff",
+      "Misconduct"
+    ],
+    "answer": "Mindre straff",
+    "rule": "Regel 5.1 - Mindre straff"
+  },
+  {
+    "question": "Vad innebär ett lagstraff?",
+    "options": [
+      "Utvisning för laget",
+      "Utvisning av målvakt",
+      "Utvisning av kapten"
+    ],
+    "answer": "Utvisning för laget"
+  },
+  {
+    "question": "Hur många domare krävs minst för en match?",
+    "options": [
+      "Minst 1",
+      "Minst 2",
+      "Det beror på serien"
+    ],
+    "answer": "Det beror på serien"
+  },
+  {
+    "question": "Vad innebär ett 'game misconduct'?",
+    "options": [
+      "2 minuter",
+      "10 minuter",
+      "Matchstraff"
+    ],
+    "answer": "Matchstraff"
+  },
+  {
+    "question": "Vilken färg har målburen?",
+    "options": [
+      "Blå",
+      "Röd och vit",
+      "Gul"
+    ],
+    "answer": "Röd och vit"
+  },
+  {
+    "question": "Vilket material ska målnätet vara gjort av?",
+    "options": [
+      "Bomull",
+      "Nylon",
+      "Plast"
+    ],
+    "answer": "Nylon"
+  },
+  {
+    "question": "Hur många nedsläppspunkter finns det i mittzonen?",
+    "options": [
+      "1",
+      "2",
+      "3"
+    ],
+    "answer": "3"
+  },
+  {
+    "question": "Vad är 'icing'?",
+    "options": [
+      "Hög klubba",
+      "Farligt spel",
+      "Pucken skjuts över två zoner utan att röras"
+    ],
+    "answer": "Pucken skjuts över två zoner utan att röras"
+  },
+  {
+    "question": "Vad är 'offside'?",
+    "options": [
+      "Spelare i målgården",
+      "Pucken passerar blå linjen först",
+      "Spelare före pucken i anfallszonen"
+    ],
+    "answer": "Spelare före pucken i anfallszonen"
+  },
+  {
+    "question": "Vilken typ av utrustning måste bäras under dräkten?",
+    "options": [
+      "Handskar",
+      "Skyddsutrustning",
+      "Skridskor"
+    ],
+    "answer": "Skyddsutrustning"
+  },
+  {
+    "question": "Hur många målvakter måste finnas tillgängliga vid matchstart?",
+    "options": [
+      "1",
+      "2",
+      "3"
+    ],
+    "answer": "2"
+  },
+  {
+    "question": "Vad kallas spelområdet framför målburen?",
+    "options": [
+      "Anfallszon",
+      "Målområde",
+      "Domarområde"
+    ],
+    "answer": "Målområde"
+  },
+  {
+    "question": "Vem får öppna dörren till utvisningsbåset?",
+    "options": [
+      "Domaren",
+      "Linjedomaren",
+      "Strafftidtagaren"
+    ],
+    "answer": "Strafftidtagaren"
+  },
+  {
+    "question": "Vad händer när klockan når 0?",
+    "options": [
+      "Spelet pausas tills signalen går",
+      "Perioden är slut",
+      "Man fortsätter spela"
+    ],
+    "answer": "Perioden är slut"
+  },
+  {
+    "question": "Vad är 'charging'?",
+    "options": [
+      "Knätackling",
+      "Hoppa in i en tackling",
+      "Slag med klubban"
+    ],
+    "answer": "Hoppa in i en tackling"
+  },
+  {
+    "question": "Vad är 'boarding'?",
+    "options": [
+      "Tackling i ryggen",
+      "Tackling mot sargen",
+      "Tackling över knäet"
+    ],
+    "answer": "Tackling mot sargen"
+  },
+  {
+    "question": "Vad är 'high sticking'?",
+    "options": [
+      "Klubba över axelhöjd",
+      "Klubba i isen",
+      "Slag med klubban"
+    ],
+    "answer": "Klubba över axelhöjd"
+  },
+  {
+    "question": "Hur många spelare får vara på isen samtidigt per lag?",
+    "options": [
+      "5 utespelare + målvakt",
+      "4 utespelare + målvakt",
+      "6 utespelare"
+    ],
+    "answer": "5 utespelare + målvakt"
+  },
+  {
+    "question": "Vad innebär 'delay of game'?",
+    "options": [
+      "Spelförstörelse",
+      "Offside",
+      "Tjuvstart"
+    ],
+    "answer": "Spelförstörelse"
+  },
+  {
+    "question": "Vad kallas ett straff på 10 minuter?",
+    "options": [
+      "Mindre straff",
+      "Misconduct",
+      "Större straff"
+    ],
+    "answer": "Misconduct"
+  },
+  {
+    "question": "Vilket straff innebär att spelaren blir utvisad men laget får ersätta?",
+    "options": [
+      "Game misconduct",
+      "Misconduct",
+      "Större straff"
+    ],
+    "answer": "Misconduct"
+  },
+  {
+    "question": "Vad är 'spearing'?",
+    "options": [
+      "Slag med klubba",
+      "Sticka med klubbans blad",
+      "Tackling med armbågarna"
+    ],
+    "answer": "Sticka med klubbans blad"
+  },
+  {
+    "question": "Vad avgör om pucken är ur spel?",
+    "options": [
+      "Den studsar",
+      "Domaren blåser",
+      "Den lämnar isen helt"
+    ],
+    "answer": "Domaren blåser"
+  },
+  {
+    "question": "Vad måste en spelare göra om han blöder?",
+    "options": [
+      "Fortsätta spela",
+      "Bytas ut direkt",
+      "Sätta på ett plåster"
+    ],
+    "answer": "Bytas ut direkt"
+  },
+  {
+    "question": "Vid vilket tillfälle får man ta timeout?",
+    "options": [
+      "När som helst",
+      "Endast vid spelavbrott",
+      "Bara efter mål"
+    ],
+    "answer": "Endast vid spelavbrott"
+  },
+  {
+    "question": "Hur lång är en standardtimeout?",
+    "options": [
+      "20 sekunder",
+      "30 sekunder",
+      "60 sekunder"
+    ],
+    "answer": "30 sekunder"
+  },
+  {
+    "question": "Vad är 'roughing'?",
+    "options": [
+      "Slag med klubba",
+      "Gruff utan slag",
+      "Hård tackling"
+    ],
+    "answer": "Gruff utan slag"
+  },
+  {
+    "question": "När får målvakten hålla pucken?",
+    "options": [
+      "När som helst",
+      "Endast i målgården",
+      "Aldrig"
+    ],
+    "answer": "Endast i målgården"
+  },
+  {
+    "question": "Vilket straff utdöms vid 'fighting'?",
+    "options": [
+      "2 minuter",
+      "5 minuter",
+      "Matchstraff"
+    ],
+    "answer": "5 minuter"
+  },
+  {
+    "question": "Vad kallas en utvisning på 5 minuter?",
+    "options": [
+      "Mindre straff",
+      "Större straff",
+      "Misconduct"
+    ],
+    "answer": "Större straff"
+  },
+  {
+    "question": "Vad är 'hooking'?",
+    "options": [
+      "Hög klubba",
+      "Haka en motståndare",
+      "Slag mot benen"
+    ],
+    "answer": "Haka en motståndare"
+  },
+  {
+    "question": "Vad är 'tripping'?",
+    "options": [
+      "Knuffa",
+      "Fälla med klubban",
+      "Slå mot klubban"
+    ],
+    "answer": "Fälla med klubban"
+  },
+  {
+    "question": "Vad händer vid 'too many players'?",
+    "options": [
+      "Ingenting",
+      "Mål tilldöms",
+      "Lagstraff"
+    ],
+    "answer": "Lagstraff"
+  },
+  {
+    "question": "Vad är 'interference'?",
+    "options": [
+      "Spela pucken med handen",
+      "Störa en spelare utan puck",
+      "Hålla klubban högt"
+    ],
+    "answer": "Störa en spelare utan puck"
+  },
+  {
+    "question": "Vad händer om en okvalificerad spelare spelar?",
+    "options": [
+      "Spelaren straffas",
+      "Domaren varnas",
+      "Laget rapporteras"
+    ],
+    "answer": "Laget rapporteras"
+  },
+  {
+    "question": "Vem får använda 'coach's challenge'?",
+    "options": [
+      "Kaptenen",
+      "Tränaren",
+      "Målvakten"
+    ],
+    "answer": "Tränaren"
+  },
+  {
+    "question": "Hur startar spelet?",
+    "options": [
+      "Avslag",
+      "Inspark",
+      "Nedsläpp"
+    ],
+    "answer": "Nedsläpp"
+  },
+  {
+    "question": "Vad kallas platsen där domaren utför ett nedsläpp?",
+    "options": [
+      "Linjen",
+      "Nedsläppspunkt",
+      "Cirkeln"
+    ],
+    "answer": "Nedsläppspunkt"
+  },
+  {
+    "question": "Vilken färg har mittcirkeln?",
+    "options": [
+      "Blå",
+      "Röd",
+      "Vit"
+    ],
+    "answer": "Blå"
+  },
+  {
+    "question": "Vad sker vid oavgjort resultat efter tre perioder i seriematcher?",
+    "options": [
+      "Timeout",
+      "Förlängning",
+      "Nytt nedsläpp"
+    ],
+    "answer": "Förlängning"
+  },
+  {
+    "question": "Kan en försvarare göra självmål med högklubba?",
+    "options": [
+      "Ja",
+      "Nej"
+    ],
+    "answer": "Ja",
+    "rule": "Regel 80.3",
+    "acceptedAnswers": [
+      "ja",
+      "yes",
+      "j"
+    ]
+  },
+  {
+    "question": "Vilka straff kan utdömas för illegal hit?",
+    "options": [
+      "Mindre straff",
+      "Mindre och större straff",
+      "Mindre straff och större straff + game misconduct"
+    ],
+    "answer": "Mindre straff och större straff + game misconduct",
+    "rule": "Regel 101.1"
+  },
+  {
+    "question": "Kan man göra mål under avvaktande offside?",
+    "options": [
+      "Ja, alltid",
+      "Nej, aldrig",
+      "Ja, om försvarande lag spelar pucken i eget mål"
+    ],
+    "answer": "Ja, om försvarande lag spelar pucken i eget mål",
+    "rule": "Regel 83.4"
+  },
+  {
+    "question": "Vilket straff utdöms för en spelare som biter en motståndare?",
+    "options": [
+      "Större straff",
+      "Game misconduct + anmälan",
+      "Mindre straff"
+    ],
+    "answer": "Game misconduct + anmälan",
+    "rule": "Regel 23.8"
+  },
+  {
+    "question": "Vid vilka förseelser kan större straffet utdömas utan game misconduct?",
+    "options": [],
+    "answer": "Boarding, Charging, Elbowing, Fighting (ovillig), Interference, Roughing, Tripping",
+    "rule": "Regel 41.3, 42.3, 45.3, 46.6, 56.4, 51.3, 57.3",
+    "acceptedAnswers": [
+      "boarding, charging, elbowing, fighting, interference, roughing, tripping",
+      "boarding charging elbowing fighting interference roughing tripping",
+      "boarding, charging, elbowing, interference, roughing, tripping",
+      "boarding charging elbowing interference roughing tripping"
+    ]
+  },
+  {
+    "question": "Får en målvakt delta i spelet med en trasig klubba?",
+    "options": [
+      "Ja, till nästa spelavbrott",
+      "Nej, aldrig",
+      "Ja, men max 30 sekunder"
+    ],
+    "answer": "Ja, till nästa spelavbrott",
+    "rule": "Regel 10.4"
+  },
+  {
+    "question": "Vad är gränsen för hög klubba (ej målskott)?",
+    "options": [
+      "Axelhöjd",
+      "Normal axelhöjd",
+      "Huvudhöjd"
+    ],
+    "answer": "Normal axelhöjd",
+    "rule": "Regel 80.1",
+    "acceptedAnswers": [
+      "normal axelhöjd",
+      "axelhöjd",
+      "axel"
+    ]
+  },
+  {
+    "question": "När anses målburen vara flyttad?",
+    "options": [],
+    "answer": "När en eller båda goalpegsen inte längre förbinder stolparna med hålen i isen",
+    "rule": "Regel 78.5",
+    "acceptedAnswers": [
+      "när goalpegsen inte förbinder stolparna med hålen",
+      "när goalpegsen lossnar",
+      "när stolparna inte är i hålen",
+      "när målburen inte sitter fast"
+    ]
+  },
+  {
+    "question": "Hur många ledare får maximalt vistas i spelarbåset under match?",
+    "options": [
+      "6",
+      "8 + 1 läkare",
+      "10"
+    ],
+    "answer": "8 + 1 läkare",
+    "rule": "Regel 5.4",
+    "acceptedAnswers": [
+      "8 + 1 läkare",
+      "8 plus 1 läkare",
+      "8+1",
+      "9",
+      "åtta plus en läkare"
+    ]
+  },
+  {
+    "question": "Hur högt är målburen mätt från isen till ribbans överkant?",
+    "options": [
+      "1,22 meter",
+      "1,27 meter",
+      "1,30 meter"
+    ],
+    "answer": "1,27 meter",
+    "rule": "Regel 2.1",
+    "acceptedAnswers": [
+      "1,27 meter",
+      "1.27 meter",
+      "1,27m",
+      "1.27m",
+      "127 cm"
+    ]
+  },
+  {
+    "question": "Hur långt från sargen måste en spelare vara innan ersättaren får beträda isen vid spelarbyte?",
+    "options": [
+      "1 meter",
+      "1,5 meter",
+      "2 meter"
+    ],
+    "answer": "1,5 meter",
+    "rule": "Regel 71.1",
+    "acceptedAnswers": [
+      "1,5 meter",
+      "1.5 meter",
+      "1,5m",
+      "1.5m",
+      "150 cm"
+    ]
+  },
+  {
+    "question": "När ska laguppställningen senast lämnas in till protokollföraren?",
+    "options": [
+      "90 minuter innan match",
+      "60 minuter innan match",
+      "30 minuter innan match"
+    ],
+    "answer": "60 minuter innan match",
+    "rule": "Regel 5.1"
+  },
+  {
+    "question": "Stämmer det att reservpuckarna måste förvaras nedkylda i sekretariatet?",
+    "options": [
+      "Ja, det är ett krav",
+      "Nej, men de bör förvaras nedkylda",
+      "Ja, men endast i slutspel"
+    ],
+    "answer": "Nej, men de bör förvaras nedkylda",
+    "rule": "Regel 13.2"
+  },
+  {
+    "question": "Är tacklingar på öppen is (nord/syd) tillåtet i damhockey?",
+    "options": [
+      "Ja",
+      "Nej"
+    ],
+    "answer": "Nej",
+    "rule": "Regel 101.1",
+    "acceptedAnswers": [
+      "nej",
+      "no",
+      "n"
+    ]
+  },
+  {
+    "question": "Hur många utespelare och målvakter måste ett lag minst ha för att starta en match?",
+    "options": [
+      "4 utespelare + 1 målvakt",
+      "5 utespelare + 2 målvakter",
+      "6 utespelare + 1 målvakt"
+    ],
+    "answer": "5 utespelare + 2 målvakter",
+    "rule": "Regel 5.1"
+  },
+  {
+    "question": "Vem väljer vilken utvisning som ska annulleras om två mindre straff avvaktas och icke felande lag gör mål?",
+    "options": [
+      "Domaren",
+      "Lagkaptenen",
+      "Tränaren"
+    ],
+    "answer": "Lagkaptenen",
+    "rule": "Regel 15.2"
+  },
+  {
+    "question": "Kan en retur på ett skott från anfallande lag bli icing?",
+    "options": [
+      "Ja",
+      "Nej"
+    ],
+    "answer": "Nej",
+    "rule": "Regel 81.1",
+    "acceptedAnswers": [
+      "nej",
+      "no",
+      "n"
+    ]
+  },
+  {
+    "question": "Måste en juniorspelare med heltäckande galler bära tandskydd i seniormatch?",
+    "options": [
+      "Ja",
+      "Nej"
+    ],
+    "answer": "Nej",
+    "rule": "Regel 9.13",
+    "acceptedAnswers": [
+      "nej",
+      "no",
+      "n"
+    ]
+  },
+  {
+    "question": "Vad är avgörande för bedömningen att döma EJ MÅL vid spark?",
+    "options": [],
+    "answer": "Om det gjordes en distinkt sparkrörelse",
+    "rule": "Regel 37.4",
+    "acceptedAnswers": [
+      "distinkt sparkrörelse",
+      "om det var en distinkt sparkrörelse",
+      "sparkrörelse",
+      "distinkt spark"
+    ]
+  },
+  {
+    "question": "Vem har rätt att öppna dörren till utvisningsbåset?",
+    "options": [
+      "Domaren",
+      "Strafftidtagaren",
+      "Linjedomaren"
+    ],
+    "answer": "Strafftidtagaren",
+    "rule": "Regel 3.2"
+  }
+]

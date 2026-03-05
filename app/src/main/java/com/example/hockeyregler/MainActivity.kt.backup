@@ -1,0 +1,1092 @@
+package com.example.hockeyregler
+
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.hockeyregler.data.PdfTextExtractor
+import com.example.hockeyregler.data.QuestionLoader
+import com.example.hockeyregler.model.LocalQuestion
+import com.example.hockeyregler.ui.theme.HockeyReglerTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.CircularProgressIndicator
+import java.io.File
+
+enum class Feedback { CORRECT, WRONG }
+
+@OptIn(ExperimentalMaterial3Api::class)
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        // Global crash handler to capture unexpected exceptions and show a toast + write to cache
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                val handler = Handler(Looper.getMainLooper())
+                handler.post {
+                    try {
+                        Toast.makeText(this, "Ett oväntat fel inträffade: ${throwable.message}", Toast.LENGTH_LONG).show()
+                    } catch (_: Exception) {}
+                }
+                // also write a simple log to cache
+                try {
+                    val f = File(cacheDir, "crash_log.txt")
+                    f.appendText("[${System.currentTimeMillis()}] ${throwable.stackTraceToString()}\n\n")
+                } catch (_: Exception) {}
+            } catch (_: Exception) {}
+            // Let the original handler run as well (optional)
+            // android.os.Process.killProcess(android.os.Process.myPid())
+        }
+
+        setContent {
+            HockeyReglerTheme {
+                Scaffold { innerPadding ->
+                    Surface(modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)) {
+                        MainContent()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MainContent(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var pages by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedFileName by remember { mutableStateOf<String?>(null) }
+    var selectedChapterIndex by remember { mutableStateOf<Int?>(null) }
+    var showQuiz by remember { mutableStateOf(false) }
+    var quizQuestions by remember { mutableStateOf<List<LocalQuestion>>(emptyList()) }
+    var showSummary by remember { mutableStateOf(false) }
+    var summaryResults by remember { mutableStateOf<List<Pair<LocalQuestion, String?>>>(emptyList()) }
+    var showQuestionDetail by remember { mutableStateOf(false) }
+    var currentDetailIndex by remember { mutableStateOf<Int?>(null) }
+    var showPdfReader by remember { mutableStateOf(false) }
+    var showPdfViewer by remember { mutableStateOf(false) }
+    var cachedPdfFile by remember { mutableStateOf<File?>(null) }
+    var viewerStartPage by remember { mutableStateOf(0) }
+    var detectedChapters by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) } // pair of startPageIndex, title
+
+    val extractor = remember { PdfTextExtractor(context = context) }
+
+    // Asset file we ship with the app
+    val assetFileName = "spelregler-foer-ishockey-2025-2026-1.pdf"
+
+    // Chapter detection heuristic: look for lines that look like headings or contain 'kapitel' etc.
+    fun detectChapters(pages: List<String>): List<Pair<Int, String>> {
+        val results = mutableListOf<Pair<Int, String>>()
+        for ((i, page) in pages.withIndex()) {
+            val lines = page.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            if (lines.isEmpty()) continue
+            val first = lines.first()
+            // heuristic: contains 'kapitel' OR short uppercase line OR starts with number + '.' or '§'
+            val isHeading = first.contains("kapitel", ignoreCase = true) ||
+                    (first.length in 3..60 && first == first.uppercase() && first.any { it.isLetter() }) ||
+                    Regex("^\\d+\\.?\\s").containsMatchIn(first) ||
+                    first.startsWith("§")
+            if (isHeading) {
+                val title = first.take(60)
+                results.add(i to title)
+            }
+        }
+        // Fallback: if none found, create chapters grouped per 5 pages
+        if (results.isEmpty()) {
+            val chunked = pages.chunked(5)
+            return chunked.mapIndexed { idx, chunk -> idx * 5 to "Kapitel ${idx + 1}" }
+        }
+        // Convert page indices to chapter indices (pageIndex / pagesPerChapter) — we keep start pages
+        return results
+    }
+
+    // Helper: copy asset to cache and extract pages using the FileProvider-backed Uri
+    fun loadPagesFromAsset() {
+        coroutineScope.launch {
+            var usedPlaceholder = false
+            try {
+                val cached = copyAssetPdfToCache(context, assetFileName)
+                cachedPdfFile = cached
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".fileprovider", cached)
+
+                // Try to extract real text with a timeout and robust error handling
+                val extracted = try {
+                    // limit extraction time to 30s to avoid long hangs on problematic PDFs
+                    kotlinx.coroutines.withTimeoutOrNull(30_000L) {
+                        extractor.extractPages(uri)
+                    }
+                } catch (e: Throwable) {
+                    null
+                }
+
+                if (extracted == null || extracted.isEmpty()) {
+                    // fallback to placeholder content if extraction failed or returned no text
+                    usedPlaceholder = true
+                    val placeholderCount = 212
+                    pages = List(placeholderCount) { idx -> "Sida ${idx + 1} av $placeholderCount (placeholder text). Kopiera pdfbox-android för riktig textextraktion." }
+                    Toast.makeText(context, "Kunde inte extrahera text från PDF — använder placeholder.", Toast.LENGTH_LONG).show()
+                    // log a helpful note
+                    try {
+                        val logf = java.io.File(context.cacheDir, "pdf_extract_log.txt")
+                        logf.appendText("[${System.currentTimeMillis()}] Extraktion misslyckades eller timeout.\n")
+                    } catch (_: Exception) {}
+                } else {
+                    // success
+                    pages = extracted
+                    Toast.makeText(context, "Regelboken laddad (riktig extraktion).", Toast.LENGTH_SHORT).show()
+                }
+
+                selectedFileName = assetFileName
+                // detect chapters using the extracted or placeholder content
+                detectedChapters = detectChapters(pages)
+                // ensure chapter list is shown after loading
+                selectedChapterIndex = null
+
+            } catch (e: Exception) {
+                // severe failure during load; fallback to placeholder
+                try {
+                    val placeholderCount = 212
+                    pages = List(placeholderCount) { idx -> "Sida ${idx + 1} av $placeholderCount (placeholder text). Kopiera pdfbox-android för riktig textextraktion." }
+                    selectedFileName = assetFileName
+                    detectedChapters = detectChapters(pages)
+                } catch (_: Exception) {}
+
+                Toast.makeText(context, "Misslyckades läsa inbyggd PDF: ${e.message}. Använder placeholder.", Toast.LENGTH_LONG).show()
+
+                try {
+                    val f = File(context.cacheDir, "crash_log.txt")
+                    f.appendText("[${System.currentTimeMillis()}] loadPagesFromAsset failed: ${e.stackTraceToString()}\n")
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    // Pdf viewer using PdfRenderer
+    @Composable
+    fun PdfViewer(file: File, startPage: Int = 0, onClose: () -> Unit) {
+        var currentPage by rememberSaveable { mutableStateOf(startPage) }
+        var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+        var renderer by remember { mutableStateOf<PdfRenderer?>(null) }
+        var pfd by remember { mutableStateOf<ParcelFileDescriptor?>(null) }
+        var pageCount by remember { mutableStateOf(0) }
+
+        // Open renderer when file changes
+        LaunchedEffect(file) {
+            try {
+                pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                renderer = pfd?.let { PdfRenderer(it) }
+                pageCount = renderer?.pageCount ?: 0
+                currentPage = startPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
+            } catch (e: Exception) {
+                // ignore for now
+            }
+        }
+
+        // Render page whenever currentPage or renderer changes
+        LaunchedEffect(currentPage, renderer) {
+            renderer?.let { r ->
+                if (currentPage < 0) currentPage = 0
+                val clamped = currentPage.coerceIn(0, (r.pageCount - 1).coerceAtLeast(0))
+                try {
+                    r.openPage(clamped).use { page ->
+                        val w = page.width
+                        val h = page.height
+                        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                        page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        bitmap = bmp
+                    }
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
+
+        DisposableEffect(renderer, pfd) {
+            onDispose {
+                try {
+                    renderer?.close()
+                } catch (_: Exception) {}
+                try {
+                    pfd?.close()
+                } catch (_: Exception) {}
+                renderer = null
+                pfd = null
+            }
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { onClose() }) { Text("Stäng") }
+                Row {
+                    Button(onClick = { if (currentPage > 0) currentPage = currentPage - 1 }) { Text("<") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { if (pageCount > 0) currentPage = (currentPage + 1).coerceAtMost(pageCount - 1) }) { Text(">") }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                bitmap?.let { Image(bitmap = it.asImageBitmap(), contentDescription = "PDF-sida") } ?: if (pageCount == 0) Text("Laddar...") else Text("Ingen sida")
+            }
+        }
+    }
+
+    // chapters: group pages in chunks of 5
+    val chapters = remember(pages) {
+        if (pages.isEmpty()) emptyList()
+        else pages.chunked(5).mapIndexed { idx, chunk ->
+            val summary = chunk.joinToString(" ").replace('\n', ' ').trim().take(200)
+            "Kapitel ${idx + 1}: ${summary}"
+        }
+    }
+
+    var showQuizOptions by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier.padding(16.dp)) {
+        // Header with hockey theme
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🏒 HockeyRegler",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Text(
+                    text = "Regelkunskap för domare",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Quiz section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Regelprov",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSecondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { showQuizOptions = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Starta regelprov")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Rulebook section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Regelbok",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (pages.isEmpty()) loadPagesFromAsset() else showPdfReader = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Sök i regelbok")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when {
+            showQuizOptions -> {
+                QuizOptionsScreen(
+                    onSelectQuestionCount = { count ->
+                        showQuizOptions = false
+                        showPdfReader = false
+                        showPdfViewer = false
+
+                        val all = QuestionLoader.loadFromAssets(context)
+                        if (all.isEmpty()) {
+                            Toast.makeText(context, "Inga frågor hittades.", Toast.LENGTH_LONG).show()
+                        } else {
+                            val picked = if (all.size <= count) all.shuffled() else all.shuffled().take(count)
+                            quizQuestions = picked.map { q ->
+                                if (q.options.isNotEmpty()) q.copy(options = q.options.shuffled()) else q
+                            }
+                            showQuiz = true
+                        }
+                    },
+                    onCancel = { showQuizOptions = false }
+                )
+            }
+
+            showPdfViewer && cachedPdfFile != null -> {
+                PdfViewer(file = cachedPdfFile!!, startPage = viewerStartPage, onClose = { showPdfViewer = false })
+            }
+
+            showPdfReader -> {
+                PdfReaderScreen(
+                    pages = pages,
+                    chapters = detectedChapters.map { (pageIdx, title) -> "Kapitel vid sida ${pageIdx + 1}: $title" },
+                    assetFileName = assetFileName,
+                    onOpenExternal = {
+                        try {
+                            val cached = copyAssetPdfToCache(context, assetFileName)
+                            cachedPdfFile = cached
+                            val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".fileprovider", cached)
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                            intent.setDataAndType(uri, "application/pdf")
+                            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Kunde inte öppna PDF: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    onSelectChapter = { chapterIdxOrPage ->
+                        // chapterIdxOrPage can be either a chapter index (from chapters list) or a page-based index (from search)
+                        val startPage = detectedChapters.getOrNull(chapterIdxOrPage)?.first ?: (chapterIdxOrPage * 5)
+                        // ensure cached file exists
+                        val cached = cachedPdfFile ?: copyAssetPdfToCache(context, assetFileName).also { cachedPdfFile = it }
+                        viewerStartPage = startPage
+                        showPdfViewer = true
+                        showPdfReader = false
+                    },
+                    onClose = { showPdfReader = false },
+                    onLoadRequested = { loadPagesFromAsset() }
+                )
+            }
+
+            selectedChapterIndex == null && chapters.isNotEmpty() && !showQuiz -> {
+                Text(text = "Kapitellista", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    itemsIndexed(chapters) { idx, title ->
+                        Column(modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedChapterIndex = idx }
+                            .padding(vertical = 8.dp)) {
+                            Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+
+            selectedChapterIndex != null && !showQuiz -> {
+                val idx = selectedChapterIndex!!
+                val chapterText = pages.chunked(5).getOrNull(idx)?.joinToString("\n\n") ?: ""
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Kapitel ${idx + 1}", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = chapterText)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = { selectedChapterIndex = null }) { Text("Tillbaka till lista") }
+                }
+            }
+
+            showQuiz -> {
+                QuizScreen(questions = quizQuestions, onFinished = { finished ->
+                    showQuiz = false
+                    if (finished) Toast.makeText(context, "Quiz klar!", Toast.LENGTH_SHORT).show()
+                }, onComplete = { results ->
+                    // results: List<Pair<LocalQuestion, String?>>
+                    // Hide any readers/viewers so summary is visible
+                    showPdfReader = false
+                    showPdfViewer = false
+                    selectedChapterIndex = null
+
+                    summaryResults = results
+                    showSummary = true
+                    showQuiz = false
+                })
+            }
+
+            showSummary -> {
+                // ensure readers are closed when showing summary
+                showPdfReader = false
+                showPdfViewer = false
+                selectedChapterIndex = null
+
+                SummaryScreen(results = summaryResults, onClose = {
+                    // close summary
+                    showSummary = false
+                }, onShowDetail = { idx ->
+                    currentDetailIndex = idx
+                    showQuestionDetail = true
+                })
+            }
+
+            showQuestionDetail && currentDetailIndex != null -> {
+                val idx = currentDetailIndex!!
+                QuestionDetailScreen(result = summaryResults[idx], index = idx, onBack = {
+                    showQuestionDetail = false
+                    currentDetailIndex = null
+                })
+            }
+
+        }
+    }
+}
+
+@Composable
+fun QuizOptionsScreen(onSelectQuestionCount: (Int) -> Unit, onCancel: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Välj antal frågor",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        listOf(5, 20, 40).forEach { count ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable { onSelectQuestionCount(count) },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "$count frågor",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSecondary
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Text("Avbryt", color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
+fun QuizScreen(
+    questions: List<LocalQuestion>,
+    onFinished: (Boolean) -> Unit,
+    onComplete: (List<Pair<LocalQuestion, String?>>) -> Unit
+) {
+    var index by rememberSaveable { mutableStateOf(0) }
+    val userAnswers = remember { mutableStateListOf<Pair<LocalQuestion, String?>>() }
+    var selectedOption by rememberSaveable { mutableStateOf<String?>(null) }
+    var textAnswer by rememberSaveable { mutableStateOf("") }
+
+    if (questions.isEmpty()) {
+        Column {
+            Text("Ingen fråga att visa.")
+            Button(onClick = { onFinished(false) }) { Text("Stäng") }
+        }
+        return
+    }
+
+    val q = questions.getOrNull(index) ?: return
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // Progress header
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Fråga ${index + 1} av ${questions.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Question card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = q.question,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (q.options.isNotEmpty()) {
+            q.options.forEach { opt ->
+                val isSelected = selectedOption == opt
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable { selectedOption = opt },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = opt,
+                            color = if (isSelected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        } else {
+            TextField(
+                value = textAnswer,
+                onValueChange = { textAnswer = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Skriv ditt svar") }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Button(
+                onClick = { onFinished(false) },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text("Avbryt", color = MaterialTheme.colorScheme.onSurface)
+            }
+
+            Button(
+                onClick = {
+                    val answer: String? = if (q.options.isNotEmpty()) selectedOption else textAnswer.takeIf { it.isNotBlank() }
+                    userAnswers.add(q to answer)
+                    selectedOption = null
+                    textAnswer = ""
+
+                    if (index + 1 >= questions.size) {
+                        onComplete(userAnswers.toList())
+                        onFinished(true)
+                    } else {
+                        index++
+                    }
+                },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(if (index + 1 >= questions.size) "Avsluta" else "Nästa")
+            }
+        }
+    }
+}
+
+@Composable
+fun SummaryScreen(
+    results: List<Pair<LocalQuestion, String?>>,
+    onClose: () -> Unit,
+    onShowDetail: (Int) -> Unit
+) {
+    val total = results.size
+    val correctCount = results.count { (q, given) -> 
+        given?.let { q.isCorrectAnswer(it) } == true
+    }
+    val percentage = if (total > 0) (correctCount * 100) / total else 0
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (percentage >= 80) Color(0xFF2E7D32) else if (percentage >= 50) MaterialTheme.colorScheme.secondary else Color(0xFFB71C1C)
+            )
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Resultat",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = if (percentage >= 50) Color.Black else Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "$correctCount / $total rätt ($percentage%)",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (percentage >= 50) Color.Black else Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+            itemsIndexed(results) { idx, pair ->
+                val (q, given) = pair
+                val correct = q.answer
+                val isCorrect = given?.let { q.isCorrectAnswer(it) } == true
+
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (isCorrect) "✓" else "✗",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFB71C1C)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${idx + 1}. ${q.question}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.Black
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (given == null) {
+                            Text("Ditt svar: (inget svar)", color = Color(0xFFB71C1C))
+                        } else {
+                            Text("Ditt svar: $given", color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFB71C1C))
+                        }
+                        Text("Rätt svar: $correct", color = Color(0xFF2E7D32))
+                        q.rule?.let { ruleRef ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Regel: $ruleRef", style = MaterialTheme.typography.bodySmall, color = Color.Black)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { onShowDetail(idx) },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Visa detaljer")
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text("Stäng")
+        }
+    }
+}
+
+@Composable
+fun QuestionDetailScreen(result: Pair<LocalQuestion, String?>, index: Int, onBack: () -> Unit) {
+    val (q, given) = result
+    val correct = q.answer
+    val isCorrect = given?.let { q.isCorrectAnswer(it) } == true
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFB71C1C)
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = if (isCorrect) "✓ Rätt svar" else "✗ Fel svar",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White
+                )
+                Text(
+                    text = "Fråga ${index + 1}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Fråga:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(q.question, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Ditt svar:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFB71C1C)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = given ?: "(inget svar)",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFB71C1C)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Rätt svar:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF2E7D32)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = correct,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF2E7D32)
+                )
+            }
+        }
+
+        q.rule?.let { ruleRef ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Regelreferens:",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = ruleRef,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text("Tillbaka")
+        }
+    }
+}
+
+@Composable
+fun PdfReaderScreen(
+    pages: List<String>,
+    chapters: List<String>,
+    assetFileName: String,
+    onOpenExternal: () -> Unit,
+    onSelectChapter: (Int) -> Unit,
+    onClose: () -> Unit,
+    onLoadRequested: () -> Unit
+) {
+    val compositionError = remember { mutableStateOf<Throwable?>(null) }
+    if (compositionError.value != null) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("Ett fel inträffade i läsaren: ${compositionError.value?.message}")
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = { onClose() }) { Text("Stäng") }
+        }
+        return
+    }
+
+    var showChapters by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val searchResults = remember(query, pages) {
+        if (query.isBlank()) emptyList() else pages.mapIndexedNotNull { i, page ->
+            if (page.contains(query, ignoreCase = true)) i else null
+        }
+    }
+
+    LaunchedEffect(pages.isEmpty()) {
+        try {
+            if (pages.isEmpty()) {
+                onLoadRequested()
+            }
+        } catch (e: Throwable) {
+            compositionError.value = e
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Sök i regelbok",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (pages.isEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Laddar regelboken...")
+            }
+            return
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Button(
+                onClick = { showChapters = !showChapters },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (showChapters) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text(if (showChapters) "Sök" else "Kapitel", color = if (showChapters) Color.Black else MaterialTheme.colorScheme.onSurface)
+            }
+            Button(
+                onClick = onClose,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Text("Stäng", color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (!showChapters) {
+            TextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Sök efter regel, t.ex. 'offside', 'utvisning'...") },
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (query.isBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Skriv ett sökord för att hitta regler", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            } else if (searchResults.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Inga träffar för '$query'", color = Color(0xFFB71C1C))
+                    }
+                }
+            } else {
+                Text("${searchResults.size} träffar", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn {
+                    itemsIndexed(searchResults) { idx, pageIndex ->
+                        val pageText = pages[pageIndex]
+                        val highlightedText = pageText.take(300)
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Sida ${pageIndex + 1}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = highlightedText + "...",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { onSelectChapter(pageIndex / 5) },
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Text("Visa kapitel", color = Color.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                itemsIndexed(chapters) { idx, title ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .clickable { onSelectChapter(idx) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(title, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Utility: try to get display name for a document Uri
+fun getDisplayName(context: android.content.Context, uri: Uri): String? {
+    return try {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex >= 0) cursor.getString(nameIndex) else null
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+// Copy asset PDF to cache and return File
+fun copyAssetPdfToCache(context: android.content.Context, assetName: String): java.io.File {
+    val outFile = java.io.File(context.cacheDir, assetName)
+    if (outFile.exists()) return outFile
+    context.assets.open(assetName).use { input ->
+        outFile.outputStream().use { output ->
+            input.copyTo(output)
+        }
+    }
+    return outFile
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    HockeyReglerTheme { MainContent() }
+}
