@@ -152,47 +152,171 @@ fun NavItem(icon: ImageVector, label: String, onClick: () -> Unit) {
 
 @Composable
 fun HomeScreenNew(onNavigate: (NavScreen) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primary)) {
-            Column(Modifier.padding(20.dp)) {
-                Text("Välkommen!", style = MaterialTheme.typography.headlineMedium, 
-                    color = MaterialTheme.colorScheme.onPrimary)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+    ) {
+        // Hero sektion
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primary),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(Modifier.padding(24.dp)) {
+                Text(
+                    "🏒 HockeyRegler",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("Regelkunskap för ishockeydomare", color = MaterialTheme.colorScheme.onPrimary)
+                Text(
+                    "Utveckla din regelkunskap",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                )
             }
         }
+        
         Spacer(Modifier.height(24.dp))
-        MenuCardNew("📝 Regelprov", "Testa dina kunskaper") { onNavigate(NavScreen.QUIZ_SELECT) }
-        Spacer(Modifier.height(16.dp))
-        MenuCardNew("🔍 Sök i regelbok", "Hitta specifika regler") { onNavigate(NavScreen.SEARCH) }
-        Spacer(Modifier.height(16.dp))
-        MenuCardNew("📖 Läs regelbok", "Bläddra genom regelboken") { onNavigate(NavScreen.READ) }
+        
+        Text(
+            "Utforska",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Spacer(Modifier.height(12.dp))
+        
+        MenuCardNew(
+            icon = "📝",
+            title = "Regelprov",
+            desc = "Testa dina kunskaper med 5, 20 eller 40 frågor"
+        ) { onNavigate(NavScreen.QUIZ_SELECT) }
+        
+        Spacer(Modifier.height(12.dp))
+        
+        MenuCardNew(
+            icon = "🔍",
+            title = "Sök i regelbok",
+            desc = "Hitta specifika regler snabbt och enkelt"
+        ) { onNavigate(NavScreen.SEARCH) }
+        
+        Spacer(Modifier.height(12.dp))
+        
+        MenuCardNew(
+            icon = "📖",
+            title = "Läs regelbok",
+            desc = "Bläddra genom hela regelboken"
+        ) { onNavigate(NavScreen.READ) }
     }
 }
 
 @Composable
-fun MenuCardNew(title: String, desc: String, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick), 
-        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.padding(20.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.height(8.dp))
-            Text(desc, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+fun MenuCardNew(icon: String, title: String, desc: String, onClick: () -> Unit) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                icon,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    desc,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
 
 @Composable
 fun QuizSelectScreen(onSelect: (Int) -> Unit, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        listOf(5, 20, 40).forEach { count ->
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+    ) {
+        Text(
+            "Välj antal frågor",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Välj hur många frågor du vill ha i ditt regelprov",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        )
+        Spacer(Modifier.height(24.dp))
+        
+        listOf(
+            Triple(5, "Snabbtest", "Perfekt för en snabb repetition"),
+            Triple(20, "Standard", "Rekommenderat för regelbunden träning"),
+            Triple(40, "Fullständigt", "Utmana dig själv med ett längre prov")
+        ).forEach { (count, label, desc) ->
             Card(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onSelect(count) },
-                colors = CardDefaults.cardColors(MaterialTheme.colorScheme.secondary)
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable { onSelect(count) },
+                colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = MaterialTheme.shapes.medium
             ) {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Text("$count frågor", style = MaterialTheme.typography.titleLarge, 
-                        color = MaterialTheme.colorScheme.onSecondary)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .size(60.dp)
+                            .padding(end = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "$count",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            desc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }

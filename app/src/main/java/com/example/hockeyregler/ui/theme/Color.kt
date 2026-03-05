@@ -2,13 +2,16 @@ package com.example.hockeyregler.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val NavyBlue = Color(0xFF001F3F)
-val LightNavy = Color(0xFF0D47A1)
-val Yellow = Color(0xFFFFD700)
-val DarkYellow = Color(0xFFFFA000)
-val Black = Color(0xFF000000)
-val White = Color(0xFFFFFFFF)
-val LightGray = Color(0xFFF5F5F5)
-val DarkGray = Color(0xFF1C1C1E)
-val DarkBackground = Color(0xFF121212)
-val DarkSurface = Color(0xFF1E1E1E)
+// Inspirerat av Domarakademin - moderna, rena färger
+val OrangeRed = Color(0xFFE63946)      // Huvudfärg - röd/orange
+val DarkRed = Color(0xFFD62828)        // Mörkare röd för kontrast
+val LightOrange = Color(0xFFFF6B6B)    // Ljusare orange för accenter
+val DeepBlue = Color(0xFF1D3557)       // Mörk blå för text/kontrast
+val LightBlue = Color(0xFF457B9D)      // Ljusare blå för sekundära element
+val OffWhite = Color(0xFFF8F9FA)       // Nästan vit bakgrund
+val White = Color(0xFFFFFFFF)          // Ren vit
+val LightGray = Color(0xFFE9ECEF)      // Ljusgrå för kort
+val MediumGray = Color(0xFF6C757D)     // Mellangrå för text
+val DarkGray = Color(0xFF343A40)       // Mörkgrå för rubriker
+val Success = Color(0xFF2A9D8F)        // Grön för rätt svar
+val Error = Color(0xFFE76F51)          // Orange/röd för fel svar
